@@ -1,0 +1,7 @@
+/build/
+/target/
+/data/
+*.class
+.idea/
+*.iml
+.DS_Store
