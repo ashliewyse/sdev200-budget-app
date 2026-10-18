@@ -5,3 +5,7 @@
 .idea/
 *.iml
 .DS_Store
+*.log
+*.wav
+*.mp4
+.superpowers/
