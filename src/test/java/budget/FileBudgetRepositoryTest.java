@@ -54,10 +54,31 @@ class FileBudgetRepositoryTest {
         Files.writeString(file,original.replace("2026-10","2026-11"));
         assertThrows(BudgetStorageException.class, () -> repo.loadBudget(a.getId(),YearMonth.of(2026,10)));
     }
-    @Test void writeFailureKeepsTheExistingFile() throws Exception {
+    @Test void inaccessibleRootPreservesExistingFile() throws Exception {
         Path blocked=root.resolve("blocked"); Files.writeString(blocked,"preserve me");
         var repo=new FileBudgetRepository(blocked,new ObjectMapper().findAndRegisterModules());
         assertThrows(BudgetStorageException.class, () -> repo.createProfile("Demo"));
         assertEquals("preserve me",Files.readString(blocked));
+    }
+
+    @Test void failedReplacementPreservesExistingBudgetAndCleansTemporaryFile() throws Exception {
+        var original=repository(); var profile=original.createProfile("Demo");
+        var month=YearMonth.of(2026,10);
+        original.saveBudget(new MonthlyBudget(profile.getId(),month,new BigDecimal("3000"),List.of(rent())));
+        Path file=root.resolve(profile.getId()).resolve("2026-10.json");
+        byte[] before=Files.readAllBytes(file);
+        var module=new com.fasterxml.jackson.databind.module.SimpleModule();
+        module.addSerializer(MonthlyBudget.class,new com.fasterxml.jackson.databind.JsonSerializer<MonthlyBudget>() {
+            @Override public void serialize(MonthlyBudget value,com.fasterxml.jackson.core.JsonGenerator generator,
+                    com.fasterxml.jackson.databind.SerializerProvider provider) throws java.io.IOException {
+                generator.writeStartObject(); generator.writeStringField("partial","incomplete");
+                throw new java.io.IOException("Controlled serialization failure");
+            }
+        });
+        var failing=new FileBudgetRepository(root,new ObjectMapper().findAndRegisterModules().registerModule(module));
+        assertThrows(BudgetStorageException.class,()->failing.saveBudget(new MonthlyBudget(profile.getId(),month,BigDecimal.ONE,List.of())));
+        assertArrayEquals(before,Files.readAllBytes(file));
+        try(var files=Files.list(file.getParent())) { assertFalse(files.anyMatch(p->p.getFileName().toString().endsWith(".tmp"))); }
+        assertEquals(new BigDecimal("3000.00"),original.loadBudget(profile.getId(),month).getIncome());
     }
 }

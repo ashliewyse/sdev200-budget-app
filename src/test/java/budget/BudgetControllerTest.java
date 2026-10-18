@@ -32,24 +32,24 @@ class BudgetControllerTest {
         mvc.perform(get("/").session(session)).andExpect(status().is3xxRedirection()).andExpect(redirectedUrl("/profiles"));
     }
     @Test void validFormsSaveThenRedirect() throws Exception {
-        mvc.perform(post("/income").session(session).param("_csrf","test-token").param("month","2026-10").param("income","3000"))
+        mvc.perform(post("/income").session(session).param("_csrf","test-token").param("formProfileId",profile.getId()).param("month","2026-10").param("income","3000"))
                 .andExpect(status().is3xxRedirection()).andExpect(redirectedUrl("/?month=2026-10"));
-        mvc.perform(post("/transactions").session(session).param("_csrf","test-token").param("month","2026-10").param("date","2026-10-17")
+        mvc.perform(post("/transactions").session(session).param("_csrf","test-token").param("formProfileId",profile.getId()).param("month","2026-10").param("date","2026-10-17")
                 .param("description","Groceries").param("amount","55.25").param("category","NEEDS")).andExpect(status().is3xxRedirection());
         var budget=service.summary(profile.getId(),YearMonth.of(2026,10)).getBudget();
         assertEquals(new BigDecimal("3000.00"),budget.getIncome());
         assertEquals(new BigDecimal("55.25"),budget.getTransactions().get(0).getAmount());
         mvc.perform(post("/transactions/"+budget.getTransactions().get(0).getId()+"/delete").session(session)
-                .param("_csrf","test-token").param("month","2026-10")).andExpect(status().is3xxRedirection());
+                .param("_csrf","test-token").param("formProfileId",profile.getId()).param("month","2026-10")).andExpect(status().is3xxRedirection());
         assertTrue(service.summary(profile.getId(),YearMonth.of(2026,10)).getBudget().getTransactions().isEmpty());
     }
     @Test void invalidAmountRetainsFormInputWithoutChangingBudget() throws Exception {
-        mvc.perform(post("/transactions").session(session).param("_csrf","test-token").param("month","2026-10").param("date","2026-10-17")
+        mvc.perform(post("/transactions").session(session).param("_csrf","test-token").param("formProfileId",profile.getId()).param("month","2026-10").param("date","2026-10-17")
                 .param("description","Keep this description").param("amount","12.345").param("category","WANTS"))
                 .andExpect(status().isBadRequest()).andExpect(view().name("dashboard"))
                 .andExpect(model().attribute("descriptionInput","Keep this description")).andExpect(model().attribute("amountInput","12.345"));
         assertTrue(service.summary(profile.getId(),YearMonth.of(2026,10)).getBudget().getTransactions().isEmpty());
-        mvc.perform(post("/income").session(session).param("_csrf","test-token").param("month","2026-10").param("income","-5"))
+        mvc.perform(post("/income").session(session).param("_csrf","test-token").param("formProfileId",profile.getId()).param("month","2026-10").param("income","-5"))
                 .andExpect(status().isBadRequest()).andExpect(model().attribute("incomeInput","-5"));
     }
     @Test void missingOrIncorrectCsrfCannotMutate() throws Exception {
@@ -59,7 +59,7 @@ class BudgetControllerTest {
     }
     @Test void postedProfileIdCannotRedirectIncomeToAnotherProfile() throws Exception {
         var other=service.createProfile("Other "+UUID.randomUUID().toString().substring(0,8));
-        mvc.perform(post("/income").session(session).param("_csrf","test-token").param("month","2026-10").param("income","900")
+        mvc.perform(post("/income").session(session).param("_csrf","test-token").param("formProfileId",profile.getId()).param("month","2026-10").param("income","900")
                 .param("profileId",other.getId())).andExpect(status().is3xxRedirection());
         assertEquals(new BigDecimal("0.00"),service.summary(other.getId(),YearMonth.of(2026,10)).getBudget().getIncome());
         assertEquals(new BigDecimal("900.00"),service.summary(profile.getId(),YearMonth.of(2026,10)).getBudget().getIncome());
@@ -82,7 +82,7 @@ class BudgetControllerTest {
     @Test void failedStoragePreservesSubmittedValues() throws Exception {
         Path dir=dataRoot.resolve(profile.getId()); Files.createDirectories(dir);
         Files.writeString(dir.resolve("2026-10.json"),"{bad");
-        var result=mvc.perform(post("/transactions").session(session).param("_csrf","test-token").param("month","2026-10")
+        var result=mvc.perform(post("/transactions").session(session).param("_csrf","test-token").param("formProfileId",profile.getId()).param("month","2026-10")
                 .param("date","2026-10-17").param("description","Unsaved groceries").param("amount","22.50").param("category","NEEDS"))
                 .andExpect(status().isServiceUnavailable()).andExpect(view().name("error"))
                 .andExpect(model().attributeExists("submittedValues")).andReturn();
@@ -91,5 +91,23 @@ class BudgetControllerTest {
     @Test void invalidMonthProducesReadableBadRequest() throws Exception {
         mvc.perform(get("/").session(session).param("month","2026-13")).andExpect(status().isBadRequest())
                 .andExpect(view().name("error")).andExpect(model().attributeExists("message"));
+    }
+
+    @Test void staleFormsCannotChangeNewlySelectedProfile() throws Exception {
+        var other=service.createProfile("Separate profile");
+        service.addTransaction(profile.getId(),YearMonth.of(2026,10),"2026-10-17","Existing entry","10","NEEDS");
+        String entryId=service.summary(profile.getId(),YearMonth.of(2026,10)).getBudget().getTransactions().get(0).getId();
+        mvc.perform(post("/profiles/select").session(session).param("_csrf","test-token").param("profileId",other.getId()))
+                .andExpect(status().is3xxRedirection());
+        mvc.perform(post("/income").session(session).param("_csrf","test-token").param("formProfileId",profile.getId())
+                .param("month","2026-10").param("income","900")).andExpect(status().isBadRequest());
+        mvc.perform(post("/transactions").session(session).param("_csrf","test-token").param("formProfileId",profile.getId())
+                .param("month","2026-10").param("date","2026-10-17").param("description","Stale entry").param("amount","5").param("category","NEEDS"))
+                .andExpect(status().isBadRequest());
+        mvc.perform(post("/transactions/"+entryId+"/delete").session(session).param("_csrf","test-token")
+                .param("formProfileId",profile.getId()).param("month","2026-10")).andExpect(status().isBadRequest());
+        assertEquals(new BigDecimal("0.00"),service.summary(other.getId(),YearMonth.of(2026,10)).getBudget().getIncome());
+        assertTrue(service.summary(other.getId(),YearMonth.of(2026,10)).getBudget().getTransactions().isEmpty());
+        assertEquals(1,service.summary(profile.getId(),YearMonth.of(2026,10)).getBudget().getTransactions().size());
     }
 }

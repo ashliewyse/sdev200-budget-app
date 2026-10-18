@@ -36,9 +36,13 @@ class JspRenderingTest {
         Matcher match=Pattern.compile("name=\"_csrf\" value=\"([^\"]+)\"").matcher(selection.body());
         assertTrue(match.find(),"JSP must render the session CSRF token");
         String token=match.group(1);
-        assertEquals(200,post("/profiles",Map.of("_csrf",token,"displayName","Zoë Demo")).statusCode());
-        assertEquals(200,post("/income",Map.of("_csrf",token,"month","2026-10","income","3000")).statusCode());
-        assertEquals(200,post("/transactions",Map.of("_csrf",token,"month","2026-10","date","2026-10-17","description","<script>alert(1)</script>","amount","3.50","category","WANTS")).statusCode());
+        var created=post("/profiles",Map.of("_csrf",token,"displayName","Zoë Demo"));
+        assertEquals(200,created.statusCode());
+        Matcher profileMatch=Pattern.compile("name=\"formProfileId\" value=\"([^\"]+)\"").matcher(created.body());
+        assertTrue(profileMatch.find(),"JSP mutation forms must carry their rendered profile");
+        String formProfile=profileMatch.group(1);
+        assertEquals(200,post("/income",Map.of("_csrf",token,"formProfileId",formProfile,"month","2026-10","income","3000")).statusCode());
+        assertEquals(200,post("/transactions",Map.of("_csrf",token,"formProfileId",formProfile,"month","2026-10","date","2026-10-17","description","<script>alert(1)</script>","amount","3.50","category","WANTS")).statusCode());
         var dashboard=get("/?month=2026-10");
         assertEquals(200,dashboard.statusCode());
         assertTrue(dashboard.body().contains("Zoë Demo"));

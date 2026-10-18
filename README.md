@@ -46,6 +46,8 @@ In IntelliJ, open this folder as a Maven project, select a Java 17+ JDK, allow d
 6. Use **Delete** to remove a mistaken entry, then add its correction.
 7. Use **Profiles** to switch people and **Help** for category explanations.
 
+If you change profiles in another tab, reopen older planner forms before saving. The app rejects a form whose displayed profile no longer matches the selected profile.
+
 Only a successful save message confirms a change. Validation errors retain the entered fields. A storage-error page displays submitted values so they can be copied before returning to the planner; it does not claim a save succeeded. Unreadable saved files produce an error rather than an empty replacement.
 
 ### The selected budgeting method

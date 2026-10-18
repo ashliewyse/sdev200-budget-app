@@ -22,7 +22,7 @@ Only a genuinely absent month file is treated as a new budget. Invalid existing 
 
 ## Web boundaries
 
-GET routes display pages. POST routes create/select a profile, update income, add an entry, or delete an entry. Income and transaction handlers do not use a posted profile ID as the storage owner. Session CSRF tokens guard mutations. JSP output escaping prevents descriptions from becoming executable markup.
+GET routes display pages. POST routes create/select a profile, update income, add an entry, or delete an entry. Income and transaction handlers do not use a posted profile ID as the storage owner. A hidden rendered-profile value is compared with one captured, validated session profile; mismatched stale forms are rejected. The captured session ID remains the only storage owner. Session CSRF tokens guard mutations. JSP output escaping prevents descriptions from becoming executable markup.
 
 This local course app has profile separation, not authentication. It is bound to loopback by default. One running instance should use a data directory; it is not a multi-server or shared-host deployment.
 

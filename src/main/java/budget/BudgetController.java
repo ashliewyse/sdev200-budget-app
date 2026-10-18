@@ -19,6 +19,13 @@ public class BudgetController {
         }
         return null;
     }
+    private String activeForForm(HttpSession session,String formProfileId) {
+        String id=active(session);
+        if (id!=null && !id.equals(formProfileId)) {
+            throw new IllegalArgumentException("The selected profile changed after this form was opened. Reopen the planner and retry your change.");
+        }
+        return id;
+    }
     private static YearMonth month(String raw) {
         if (raw==null || !raw.matches("[0-9]{4}-[0-9]{2}")) throw new IllegalArgumentException("Choose a valid month.");
         try {
@@ -60,18 +67,18 @@ public class BudgetController {
         if (!model.containsAttribute("amountInput")) model.addAttribute("amountInput","");
         if (!model.containsAttribute("categoryInput")) model.addAttribute("categoryInput","NEEDS");return "dashboard";
     }
-    @PostMapping("/income") public String income(@RequestParam(defaultValue="") String month,@RequestParam(defaultValue="") String income,
+    @PostMapping("/income") public String income(@RequestParam(defaultValue="") String formProfileId,@RequestParam(defaultValue="") String month,@RequestParam(defaultValue="") String income,
             HttpSession session,Model model,HttpServletResponse response,RedirectAttributes flash) {
-        String id=active(session);if (id==null) return "redirect:/profiles";YearMonth selected=month(month);
+        String id=activeForForm(session,formProfileId);if (id==null) return "redirect:/profiles";YearMonth selected=month(month);
         try { service.saveIncome(id,selected,income);flash.addFlashAttribute("success","Monthly income saved.");return "redirect:/?month="+selected; }
         catch (IllegalArgumentException ex) {
             response.setStatus(400);model.addAttribute("error",ex.getMessage());model.addAttribute("incomeInput",income);return dashboard(id,selected,session,model);
         }
     }
-    @PostMapping("/transactions") public String add(@RequestParam(defaultValue="") String month,@RequestParam(defaultValue="") String date,
+    @PostMapping("/transactions") public String add(@RequestParam(defaultValue="") String formProfileId,@RequestParam(defaultValue="") String month,@RequestParam(defaultValue="") String date,
             @RequestParam(defaultValue="") String description,@RequestParam(defaultValue="") String amount,@RequestParam(defaultValue="") String category,
             HttpSession session,Model model,HttpServletResponse response,RedirectAttributes flash) {
-        String id=active(session);if (id==null) return "redirect:/profiles";YearMonth selected=month(month);
+        String id=activeForForm(session,formProfileId);if (id==null) return "redirect:/profiles";YearMonth selected=month(month);
         try { service.addTransaction(id,selected,date,description,amount,category);flash.addFlashAttribute("success","Entry saved.");return "redirect:/?month="+selected; }
         catch (IllegalArgumentException ex) {
             response.setStatus(400);model.addAttribute("error",ex.getMessage());model.addAttribute("dateInput",date);
@@ -79,9 +86,9 @@ public class BudgetController {
             return dashboard(id,selected,session,model);
         }
     }
-    @PostMapping("/transactions/{id}/delete") public String delete(@PathVariable String id,@RequestParam(defaultValue="") String month,
+    @PostMapping("/transactions/{id}/delete") public String delete(@PathVariable String id,@RequestParam(defaultValue="") String formProfileId,@RequestParam(defaultValue="") String month,
             HttpSession session,RedirectAttributes flash) {
-        String profile=active(session);if (profile==null) return "redirect:/profiles";YearMonth selected=month(month);
+        String profile=activeForForm(session,formProfileId);if (profile==null) return "redirect:/profiles";YearMonth selected=month(month);
         service.deleteTransaction(profile,selected,id);flash.addFlashAttribute("success","Entry deleted.");return "redirect:/?month="+selected;
     }
     @GetMapping("/help") public String help(Model model) { model.addAttribute("pageTitle","Help");return "help"; }
