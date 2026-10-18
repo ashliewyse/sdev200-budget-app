@@ -1,4 +1,5 @@
 package budget;
+import com.fasterxml.jackson.annotation.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 /** One expense or contribution toward goals. */
@@ -8,7 +9,7 @@ public final class Transaction {
     private final String description;
     private final BigDecimal amount;
     private final BudgetCategory category;
-    public Transaction(String id, LocalDate date, String description, BigDecimal amount, BudgetCategory category) {
+    @JsonCreator public Transaction(@JsonProperty("id") String id, @JsonProperty("date") LocalDate date, @JsonProperty("description") String description, @JsonProperty("amount") BigDecimal amount, @JsonProperty("category") BudgetCategory category) {
         this.id = Identifiers.require(id);
         if (date == null || date.getYear() < 1 || date.getYear() > 9999) throw new IllegalArgumentException("Enter a valid date.");
         if (description == null || description.trim().isEmpty() || description.trim().length() > 120) {

@@ -1,4 +1,5 @@
 package budget;
+import com.fasterxml.jackson.annotation.*;
 import java.math.BigDecimal;
 import java.time.YearMonth;
 import java.util.*;
@@ -8,7 +9,7 @@ public final class MonthlyBudget {
     private final YearMonth month;
     private final BigDecimal income;
     private final List<Transaction> transactions;
-    public MonthlyBudget(String profileId, YearMonth month, BigDecimal income, List<Transaction> transactions) {
+    @JsonCreator public MonthlyBudget(@JsonProperty("profileId") String profileId, @JsonProperty("month") YearMonth month, @JsonProperty("income") BigDecimal income, @JsonProperty("transactions") List<Transaction> transactions) {
         this.profileId = Identifiers.require(profileId);
         if (month == null || month.getYear() < 1 || month.getYear() > 9999) throw new IllegalArgumentException("Choose a valid month.");
         this.month = month;
