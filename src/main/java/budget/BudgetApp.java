@@ -2,7 +2,7 @@ package budget;
 
 import java.math.BigDecimal;
 
-/** Module 3 demonstration; the JSP interface will be added later. */
+/** Optional console demonstration of the same 50/30/20 calculation used by the JSP app. */
 public final class BudgetApp {
     private BudgetApp() { }
 

@@ -1,0 +1,6 @@
+<%@ page contentType="text/html;charset=UTF-8" pageEncoding="UTF-8" %>
+<%@ taglib prefix="c" uri="jakarta.tags.core" %><%@ taglib prefix="fmt" uri="jakarta.tags.fmt" %>
+<fmt:setLocale value="en_US"/>
+<!doctype html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title><c:out value="${pageTitle}" default="Budget Planner"/> · Budget Planner</title><link rel="stylesheet" href="<c:url value='/app.css'/>"></head><body>
+<header class="site-header"><a class="brand" href="<c:url value='/'/>"><span class="brand-icon">B</span><span>Budget Planner<small>A little clarity for every dollar.</small></span></a><nav aria-label="Main navigation"><a href="<c:url value='/'/>">Planner</a><a href="<c:url value='/profiles'/>">Profiles</a><a href="<c:url value='/help'/>">Help</a></nav></header><main id="main">
+<c:if test="${not empty success}"><p class="notice success" role="status"><c:out value="${success}"/></p></c:if><c:if test="${not empty error}"><p class="notice error" role="alert"><c:out value="${error}"/></p></c:if>
